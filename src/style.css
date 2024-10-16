@@ -50,6 +50,12 @@ h1 {
   background-color: white;
 }
 
+#clearButton {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;
