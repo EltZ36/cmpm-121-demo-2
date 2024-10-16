@@ -42,6 +42,14 @@ h1 {
   text-align: center;
 }
 
+/* Adding in white to block out parts of the drop shadow */
+#drawingCanvas {
+  border: 5px black solid;
+  border-radius: 10px;
+  filter: drop-shadow(black 2px 2px 5px);
+  background-color: white;
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;
