@@ -44,14 +44,16 @@ h1 {
 
 /* Adding in white to block out parts of the drop shadow */
 #drawingCanvas {
+  display: block;
+  margin: auto;
   border: 5px black solid;
   border-radius: 10px;
   filter: drop-shadow(black 2px 2px 5px);
   background-color: white;
 }
 
-#clearButton {
-  display: flex;
+#clearButton, #redoButton, #undoButton {
+  margin: 20px 10px 10px 10px;
   justify-content: center;
   align-items: center;
 }

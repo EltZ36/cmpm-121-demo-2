@@ -22,6 +22,8 @@ const cursor = { active: false, x : 0, y: 0};
 
 const lines: Array<Array<{ x: number, y: number }>> = []; 
 let currentLine: Array<{ x: number, y: number }> = [];
+let redoLines: Array<Array<{ x: number, y: number }>> = [];
+
 
 function redraw(){
     ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
@@ -44,8 +46,7 @@ function redraw(){
 
 function addPoint(x: number, y: number ){
     currentLine.push({x, y});
-    const drawingChangedEvent = new Event("drawing-changed");
-    drawingCanvas.dispatchEvent(drawingChangedEvent);
+    drawingCanvas.dispatchEvent(new Event("drawing-changed"));
 }
 
 drawingCanvas.addEventListener("drawing-changed", redraw); 
@@ -85,5 +86,34 @@ const clearButton = document.createElement('button');
     currentLine = [];
 }); 
 
+const undoButton = document.createElement('button');
+    undoButton.id = "undoButton";
+    undoButton.innerHTML = "undo";
+    undoButton.addEventListener('click', () =>{
+    if(lines.length > 0){
+        const lastPoint = lines.pop();
+        //make sure the last point isn't undefined
+        if(lastPoint){
+            redoLines.push(lastPoint);
+            drawingCanvas.dispatchEvent(new Event("drawing-changed"));
+        }
+    }
+}); 
+
+const redoButton = document.createElement('button');
+    redoButton.id = "redoButton";
+    redoButton.innerHTML = "redo";
+    redoButton.addEventListener('click', () =>{
+    if(redoLines.length > 0){
+        drawingCanvas.dispatchEvent(new Event("drawing-changed"));
+        let previousLine = redoLines.pop();
+        if(previousLine){
+            lines.push(previousLine);
+            drawingCanvas.dispatchEvent(new Event("drawing-changed"));
+        }
+    }
+}); 
 
 app.append(clearButton);
+app.append(undoButton);
+app.append(redoButton);
