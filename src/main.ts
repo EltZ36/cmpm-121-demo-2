@@ -86,32 +86,30 @@ const clearButton = document.createElement('button');
     currentLine = [];
 }); 
 
+//asking Brace if there was a way to make the undo and redo function together and make it readable
+//this pushes and pops the "stacks" the display list and redo list. 
+function moveBetweenStacks(fromStack: Array<any>, toStack: Array<any>, eventType: string){
+    if(fromStack.length > 0){
+        const poppedElement = fromStack.pop();
+        if(poppedElement){
+            toStack.push(poppedElement);
+            drawingCanvas.dispatchEvent(new Event(eventType))
+        }
+    }
+}
+
 const undoButton = document.createElement('button');
     undoButton.id = "undoButton";
     undoButton.innerHTML = "undo";
-    undoButton.addEventListener('click', () =>{
-    if(lines.length > 0){
-        const lastPoint = lines.pop();
-        //make sure the last point isn't undefined
-        if(lastPoint){
-            redoLines.push(lastPoint);
-            drawingCanvas.dispatchEvent(new Event("drawing-changed"));
-        }
-    }
+    undoButton.addEventListener('click', () => {
+        moveBetweenStacks(lines, redoLines, "drawing-changed")
 }); 
 
 const redoButton = document.createElement('button');
     redoButton.id = "redoButton";
     redoButton.innerHTML = "redo";
     redoButton.addEventListener('click', () =>{
-    if(redoLines.length > 0){
-        drawingCanvas.dispatchEvent(new Event("drawing-changed"));
-        let previousLine = redoLines.pop();
-        if(previousLine){
-            lines.push(previousLine);
-            drawingCanvas.dispatchEvent(new Event("drawing-changed"));
-        }
-    }
+    moveBetweenStacks(redoLines, lines, "drawing-changed")
 }); 
 
 app.append(clearButton);
