@@ -20,44 +20,70 @@ app.append(drawingCanvas);
 const ctx = drawingCanvas.getContext('2d')!;
 const cursor = { active: false, x : 0, y: 0};
 
-function drawLine(context: CanvasRenderingContext2D, x1: number, y1: number, x2: number, y2: number){
-    context.beginPath();
-    context.strokeStyle = "black";
-    context.lineWidth = 1;
-    context.moveTo(x1, y1);
-    context.lineTo(x2, y2);
-    context.stroke();
-    context.closePath();
+const lines: Array<Array<{ x: number, y: number }>> = []; 
+let currentLine: Array<{ x: number, y: number }> = [];
+
+function redraw(){
+    ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+    lines.forEach(line => {
+        if(line.length > 0) {
+            ctx.beginPath();
+            const [{x, y}, ...rest] = line;
+            //from lecture 9 and is destructuring assignment 
+            //move to the first part of the array
+            ctx.moveTo(x,y);
+            //do the rest
+            rest.forEach(point => {
+                ctx.lineTo(point.x, point.y)
+            });
+
+            ctx.stroke();
+        }
+    })
 }
 
+function addPoint(x: number, y: number ){
+    currentLine.push({x, y});
+    const drawingChangedEvent = new Event("drawing-changed");
+    drawingCanvas.dispatchEvent(drawingChangedEvent);
+}
+
+drawingCanvas.addEventListener("drawing-changed", redraw); 
+
 drawingCanvas.addEventListener("mousedown", (e) => {
+    currentLine = [];
+    lines.push(currentLine);
+    cursor.active = true; 
     cursor.x = e.offsetX;
     cursor.y = e.offsetY;
-    cursor.active = true;
+    addPoint(cursor.x, cursor.y)
 });
 
 drawingCanvas.addEventListener("mousemove", (e) => {
     if(cursor.active){
-        drawLine(ctx, cursor.x, cursor.y, e.offsetX, e.offsetY);
         cursor.x = e.offsetX;
         cursor.y = e.offsetY;
+        addPoint(cursor.x, cursor.y)
     }
 });
 
 drawingCanvas.addEventListener("mouseup", (e) => {
     if(cursor.active){
-        drawLine(ctx, cursor.x, cursor.y, e.offsetX, e.offsetY)
+        currentLine = [];
         cursor.x = 0;
         cursor.y = 0;
         cursor.active = false;
-    }
+    }  
 });
 
 const clearButton = document.createElement('button');
-clearButton.id = "clearButton"
-clearButton.innerHTML = "clear";
-clearButton.addEventListener('click', () =>{
+    clearButton.id = "clearButton";
+    clearButton.innerHTML = "clear";
+    clearButton.addEventListener('click', () =>{
     ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height)
+    lines.length = 0;
+    currentLine = [];
 }); 
+
 
 app.append(clearButton);
