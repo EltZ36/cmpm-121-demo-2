@@ -4,13 +4,8 @@ interface Point {
   y: number;
 }
 
-interface Displayable {
-  display(ctx: CanvasRenderingContext2D): void;
-  drag(x: number, y: number): void;
-}
+type RenderDisplay = (ctx: CanvasRenderingContext2D, line: Point[]) => void;
 
-type RenderEngine = (ctx: CanvasRenderingContext2D, line: Point[]) => void;
-
-type DrawLineCommand = (engine: RenderEngine) => void;
+type DrawLineCommand = (display: RenderDisplay) => void;
 
 type ActiveCursor = boolean;
