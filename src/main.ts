@@ -17,7 +17,13 @@ app.append(title);
 app.append(drawingCanvas);
 
 const ctx = drawingCanvas.getContext("2d")!;
-let cursor_active: ActiveCursor = false;
+
+const cursor = {
+  x: 0,
+  y: 0,
+  active: false,
+};
+
 let currentMarkerSize = 1;
 
 const MARKER_SIZES = {
@@ -27,7 +33,7 @@ const MARKER_SIZES = {
 
 const lines: Line[] = [];
 let currentLine: Line = { points: [], thickness: currentMarkerSize };
-let redoLines: Line[] = [];
+const redoLines: Line[] = [];
 
 /*lines 27 - 54 were in done in collaboration with CJ Moshy to get the command line pattern
 code was also taken from email about functional prog.
@@ -58,15 +64,36 @@ function drawLine(ctx: CanvasRenderingContext2D, line: Line): DrawLineCommand {
   };
 }
 
+const tools: ToolPreview = (ctx, thickness, sticker) => {
+  if (sticker != true) {
+    ctx.beginPath();
+    ctx.arc(cursor.x, cursor.y, thickness, 0, 2 * Math.PI);
+    ctx.stroke();
+  }
+};
+
+function drawCursor(
+  ctx: CanvasRenderingContext2D,
+  thickness: number,
+  sticker: boolean,
+): DrawCursorCommand {
+  return (tools: ToolPreview) => {
+    tools(ctx, thickness, sticker);
+  };
+}
+
 function redraw() {
   ctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
-  let runner = drawLine(ctx, currentLine);
+  const runner = drawLine(ctx, currentLine);
   runner(display);
 
   for (const l of lines) {
-    let runner = drawLine(ctx, l);
+    const runner = drawLine(ctx, l);
     runner(display);
   }
+
+  const cursorInvoker = drawCursor(ctx, currentMarkerSize, false);
+  cursorInvoker(tools);
 }
 
 function addPoint(x: number, y: number) {
@@ -76,29 +103,37 @@ function addPoint(x: number, y: number) {
 
 drawingCanvas.addEventListener("drawing-changed", redraw);
 
-drawingCanvas.addEventListener("mousedown", (e) => {
-  cursor_active = true;
-  currentLine = { points: [], thickness: currentMarkerSize };
-  const { offsetX, offsetY } = e;
-  addPoint(offsetX, offsetY);
+drawingCanvas.addEventListener("tool-moved", redraw);
+
+drawingCanvas.addEventListener("mousedown", (_e) => {
+  mouseMove(_e);
 });
 
-drawingCanvas.addEventListener("mousemove", (e) => {
-  if (!cursor_active) {
-    return;
+drawingCanvas.addEventListener("mouseout", (_e) => {
+  cursor.x = NaN;
+  cursor.y = NaN;
+  drawingCanvas.dispatchEvent(new Event("tool-moved"));
+});
+
+drawingCanvas.addEventListener("mousemove", (_e) => {
+  cursor.x = _e.offsetX;
+  cursor.y = _e.offsetY;
+  if (!cursor.active) {
+    drawingCanvas.dispatchEvent(new Event("tool-moved"));
+  } else {
+    addPoint(cursor.x, cursor.y);
   }
-  const { offsetX, offsetY } = e;
-  addPoint(offsetX, offsetY);
 });
 
 drawingCanvas.addEventListener("mouseup", () => {
-  if (!cursor_active) {
+  if (!cursor.active) {
+    drawingCanvas.dispatchEvent(new Event("tool-moved"));
     return;
   }
   //make a copy of the currentLine
   lines.push(currentLine);
   currentLine = { points: [], thickness: currentMarkerSize };
-  cursor_active = false;
+  cursor.active = false;
 });
 
 const clearButton = document.createElement("button");
@@ -109,6 +144,14 @@ clearButton.addEventListener("click", () => {
   lines.length = 0;
   currentLine = { points: [], thickness: currentMarkerSize };
 });
+
+function mouseMove(e: MouseEvent) {
+  cursor.active = true;
+  currentLine = { points: [], thickness: currentMarkerSize };
+  cursor.x = e.offsetX;
+  cursor.y = e.offsetY;
+  addPoint(cursor.x, cursor.y);
+}
 
 /* asking Brace if there was a way to make the undo and redo function together and make it readable
   this pushes and pops the "stacks" the display list and redo list.*/

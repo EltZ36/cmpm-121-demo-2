@@ -15,8 +15,16 @@ type RenderDisplay = (
   thickness: number,
 ) => void;
 
+type ToolPreview = (
+  ctx: CanvasRenderingContext2D,
+  thickness: number,
+  sticker: boolean,
+) => void;
+
 //use of the drawline command comes from CJ Moshy and looking at his code
 type DrawLineCommand = (display: RenderDisplay) => void;
+
+type DrawCursorCommand = (display: ToolPreview) => void;
 
 type MultipleMarkers = (markersize: string) => void;
 
