@@ -52,12 +52,6 @@ h1 {
   background-color: white;
 }
 
-#clearButton, #redoButton, #undoButton {
-  margin: 20px 10px 10px 10px;
-  justify-content: center;
-  align-items: center;
-}
-
 .logo {
   height: 6em;
   padding: 1.5em;
@@ -88,6 +82,9 @@ button {
   background-color: #1a1a1a;
   cursor: pointer;
   transition: border-color 0.25s;
+  margin: 20px 10px 10px 10px;
+  justify-content: center;
+  align-items: center;
 }
 button:hover {
   border-color: #646cff;
