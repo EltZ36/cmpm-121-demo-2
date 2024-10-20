@@ -21,19 +21,19 @@ interface Sticker {
 type RenderDisplay = (
   ctx: CanvasRenderingContext2D,
   line: Point[],
-  thickness: number
+  thickness: number,
 ) => void;
 
 type ToolPreview = (
   ctx: CanvasRenderingContext2D,
   thickness: number,
-  stickerMode: boolean
+  stickerMode: boolean,
 ) => void;
 
 type StickerPreview = (
   ctx: CanvasRenderingContext2D,
   isActive: boolean,
-  symbol: string
+  symbol: string,
 ) => void;
 
 // Command execution functions
@@ -110,7 +110,7 @@ const renderSticker: StickerPreview = (ctx, isActive, symbol) => {
 // Command functions for drawing actions
 function createDrawLineCommand(
   ctx: CanvasRenderingContext2D,
-  line: Line
+  line: Line,
 ): DrawLineCommand {
   return (render: RenderDisplay) => {
     render(ctx, line.points, line.thickness);
@@ -120,7 +120,7 @@ function createDrawLineCommand(
 function createStickerCommand(
   ctx: CanvasRenderingContext2D,
   isActive: boolean,
-  symbol: string
+  symbol: string,
 ): StickerCommand {
   return (renderSticker: StickerPreview) => {
     renderSticker(ctx, isActive, symbol);
@@ -130,7 +130,7 @@ function createStickerCommand(
 function createCursorDrawCommand(
   ctx: CanvasRenderingContext2D,
   thickness: number,
-  stickerMode: boolean
+  stickerMode: boolean,
 ): DrawCursorCommand {
   return (renderTool: ToolPreview) => {
     renderTool(ctx, thickness, stickerMode);
@@ -150,7 +150,9 @@ function updateCanvasView() {
   allStickers.forEach((sticker) => {
     const singleStickerCmd = createStickerCommand(ctx, true, sticker.symbol);
     singleStickerCmd((ctx, isActive, symbol) => {
-      if (isActive) ctx.fillText(symbol, sticker.position.x, sticker.position.y);
+      if (isActive) {
+        ctx.fillText(symbol, sticker.position.x, sticker.position.y);
+      }
     });
   });
 
@@ -166,12 +168,18 @@ function updateCanvasView() {
     const cursorPreviewCmd = createCursorDrawCommand(
       ctx,
       selectedMarkerSize,
-      stickerMode
+      stickerMode,
     );
     cursorPreviewCmd((ctx, currentThickness, isStickerMode) => {
       if (!isStickerMode) {
         ctx.beginPath();
-        ctx.arc(cursorStatus.x, cursorStatus.y, currentThickness / 2, 0, 2 * Math.PI);
+        ctx.arc(
+          cursorStatus.x,
+          cursorStatus.y,
+          currentThickness / 2,
+          0,
+          2 * Math.PI,
+        );
         ctx.stroke();
       }
     });
@@ -245,7 +253,11 @@ function handleMouseDownEvent(event: MouseEvent) {
 // Function for placing stickers
 function placeSticker(event: MouseEvent) {
   const position = { x: event.offsetX, y: event.offsetY };
-  const newSticker: Sticker = { position, symbol: currentSticker, icon: currentSticker };
+  const newSticker: Sticker = {
+    position,
+    symbol: currentSticker,
+    icon: currentSticker,
+  };
   allStickers.push(newSticker);
   canvas.dispatchEvent(new Event("canvas-updated"));
 }
@@ -255,7 +267,7 @@ this pushes and pops the "stacks" the display list and redo list.*/
 function moveBetweenStacks(
   fromArray: (Line | Sticker)[],
   toArray: (Line | Sticker)[],
-  eventType: string
+  eventType: string,
 ) {
   if (fromArray.length === 0) return;
   const movedItem = fromArray.pop();
@@ -265,7 +277,6 @@ function moveBetweenStacks(
   }
 }
 
-
 const undoButton = document.createElement("button");
 undoButton.id = "undoButton";
 undoButton.innerHTML = "Undo";
@@ -274,7 +285,7 @@ undoButton.addEventListener("click", () => {
     //from brace and checks if allLines has any elements and if it does, return true false and move between the sticker arrays
     allLines.length ? allLines : allStickers,
     allLines.length ? redoLineBuffer : redoStickerBuffer,
-    "canvas-updated"
+    "canvas-updated",
   );
 });
 
@@ -285,14 +296,15 @@ redoButton.addEventListener("click", () => {
   moveBetweenStacks(
     redoLineBuffer.length ? redoLineBuffer : redoStickerBuffer,
     redoLineBuffer.length ? allLines : allStickers,
-    "canvas-updated"
+    "canvas-updated",
   );
 });
 
 const switchMarkerTool = (selectedSize: string) => {
   stickerMode = false;
-  selectedMarkerSize =
-    selectedSize === "thin" ? MARKER_SIZES.THIN : MARKER_SIZES.THICK;
+  selectedMarkerSize = selectedSize === "thin"
+    ? MARKER_SIZES.THIN
+    : MARKER_SIZES.THICK;
 };
 
 const selectSticker = (index: number) => {
@@ -335,5 +347,5 @@ app.append(
   clearCanvasButton,
   undoButton,
   redoButton,
-  ...stickerButtons
+  ...stickerButtons,
 );

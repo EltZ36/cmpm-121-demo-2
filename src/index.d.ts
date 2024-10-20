@@ -9,6 +9,11 @@ interface Line {
   thickness: number;
 }
 
+interface Sticker {
+  position: Point;
+  icon: string;
+}
+
 type RenderDisplay = (
   ctx: CanvasRenderingContext2D,
   line: Point[],
@@ -18,13 +23,22 @@ type RenderDisplay = (
 type ToolPreview = (
   ctx: CanvasRenderingContext2D,
   thickness: number,
-  sticker: boolean,
+  isActive: boolean,
+  stickerActive: boolean,
+) => void;
+
+type StickerPreview = (
+  ctx: CanvasRenderingContext2D,
+  isActive: boolean,
+  symbol: string,
 ) => void;
 
 //use of the drawline command comes from CJ Moshy and looking at his code
 type DrawLineCommand = (display: RenderDisplay) => void;
 
 type DrawCursorCommand = (display: ToolPreview) => void;
+
+type StickerCommand = (display: StickerPreview) => void;
 
 type MultipleMarkers = (markersize: string) => void;
 
