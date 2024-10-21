@@ -1,45 +1,6 @@
 import "./style.css";
 
-// Define structures for points, lines, and stickers
-interface Point {
-  x: number;
-  y: number;
-}
-
-interface Line {
-  points: Point[];
-  thickness: number;
-}
-
-interface Sticker {
-  position: Point;
-  symbol: string;
-  icon: string;
-}
-
-// Command types
-type RenderDisplay = (
-  ctx: CanvasRenderingContext2D,
-  line: Point[],
-  thickness: number,
-) => void;
-
-type ToolPreview = (
-  ctx: CanvasRenderingContext2D,
-  thickness: number,
-  stickerMode: boolean,
-) => void;
-
-type StickerPreview = (
-  ctx: CanvasRenderingContext2D,
-  isActive: boolean,
-  symbol: string,
-) => void;
-
-// Command execution functions
-type DrawLineCommand = (display: RenderDisplay) => void;
-type DrawCursorCommand = (display: ToolPreview) => void;
-type StickerCommand = (display: StickerPreview) => void;
+// Define interfaces for points and drawable items
 
 // Application setup
 const APPLICATION_NAME = "Drawing App";
@@ -76,63 +37,60 @@ const MARKER_SIZES = {
 
 const STICKERS = ["🤡", "🧐", "😐"];
 
-// Structures managing lines, stickers, and command history
-const allLines: Line[] = [];
-const allStickers: Sticker[] = [];
-let ongoingLine: Line = { points: [], thickness: selectedMarkerSize };
-const redoLineBuffer: Line[] = [];
-const redoStickerBuffer: Sticker[] = [];
-
-/*lines 27 - 54 were in done in collaboration with CJ Moshy to get the command line pattern
-code was also taken from email about functional prog.
-source: https://www.typescriptlang.org/play/?#code...
-*/
-
-// Rendering functions for lines and stickers
-const renderLine: RenderDisplay = (context, linePoints, lineThickness) => {
-  if (linePoints.length === 0) return;
-  context.beginPath();
-  context.lineWidth = lineThickness;
-  const [{ x: startX, y: startY }, ...otherPoints] = linePoints;
-  context.moveTo(startX, startY);
-  otherPoints.forEach((point) => {
-    context.lineTo(point.x, point.y);
-  });
-  context.stroke();
+// Structures managing drawable items and command history
+const drawables: Drawable[] = [];
+const redoDrawables: Drawable[] = [];
+let ongoingLine: Line = {
+  points: [],
+  thickness: selectedMarkerSize,
+  display: () => {},
 };
 
-const renderSticker: StickerPreview = (ctx, isActive, symbol) => {
-  if (isActive && symbol) {
-    ctx.fillText(symbol, cursorStatus.x, cursorStatus.y);
-  }
-};
+/* Remainder of code provided by CJ Moshy and enhanced with functional programming patterns. */
 
-// Command functions for drawing actions
-function createDrawLineCommand(
-  ctx: CanvasRenderingContext2D,
-  line: Line,
-): DrawLineCommand {
-  return (render: RenderDisplay) => {
-    render(ctx, line.points, line.thickness);
+// Implements the display function for Line
+function createLine(points: Point[], thickness: number): Line {
+  return {
+    points,
+    thickness,
+    display(ctx) {
+      if (this.points.length === 0) return;
+      ctx.lineWidth = this.thickness;
+      ctx.beginPath();
+      const [{ x: startX, y: startY }, ...otherPoints] = this.points;
+      ctx.moveTo(startX, startY);
+      otherPoints.forEach((point) => {
+        ctx.lineTo(point.x, point.y);
+      });
+      ctx.stroke();
+    },
   };
 }
 
-function createStickerCommand(
-  ctx: CanvasRenderingContext2D,
-  isActive: boolean,
-  symbol: string,
-): StickerCommand {
-  return (renderSticker: StickerPreview) => {
-    renderSticker(ctx, isActive, symbol);
+// Implements the display function for Sticker
+function createSticker(position: Point, symbol: string): Sticker {
+  return {
+    position,
+    symbol,
+    display(ctx) {
+      ctx.fillText(this.symbol, this.position.x, this.position.y);
+    },
   };
 }
 
+// Command to draw cursor
 function createCursorDrawCommand(
   ctx: CanvasRenderingContext2D,
   thickness: number,
   stickerMode: boolean,
-): DrawCursorCommand {
-  return (renderTool: ToolPreview) => {
+) {
+  return (
+    renderTool: (
+      ctx: CanvasRenderingContext2D,
+      thickness: number,
+      stickerMode: boolean,
+    ) => void,
+  ) => {
     renderTool(ctx, thickness, stickerMode);
   };
 }
@@ -140,46 +98,20 @@ function createCursorDrawCommand(
 // Handles view updates
 function updateCanvasView() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Render all lines and stickers individually
-  allLines.forEach((line) => {
-    const drawLineCmd = createDrawLineCommand(ctx, line);
-    drawLineCmd(renderLine);
-  });
-
-  allStickers.forEach((sticker) => {
-    const singleStickerCmd = createStickerCommand(ctx, true, sticker.symbol);
-    singleStickerCmd((ctx, isActive, symbol) => {
-      if (isActive) {
-        ctx.fillText(symbol, sticker.position.x, sticker.position.y);
-      }
-    });
-  });
-
-  if (cursorStatus.isDrawing && !stickerMode) {
-    const currentLineCmd = createDrawLineCommand(ctx, ongoingLine);
-    currentLineCmd(renderLine);
+  drawables.forEach((drawable) => drawable.display(ctx));
+  if(stickerMode != true && currentSticker == ""){
+    ongoingLine.display(ctx);
   }
-
-  if (stickerMode) {
-    const stickerPreviewCmd = createStickerCommand(ctx, true, currentSticker);
-    stickerPreviewCmd(renderSticker);
+  if (stickerMode && currentSticker !== "") {
+    const position = { x: cursorStatus.x, y: cursorStatus.y };
+    const stickerPreview = createSticker(position, currentSticker);
+    stickerPreview.display(ctx);
   } else {
-    const cursorPreviewCmd = createCursorDrawCommand(
-      ctx,
-      selectedMarkerSize,
-      stickerMode,
-    );
+    const cursorPreviewCmd = createCursorDrawCommand(ctx,selectedMarkerSize,stickerMode);
     cursorPreviewCmd((ctx, currentThickness, isStickerMode) => {
       if (!isStickerMode) {
         ctx.beginPath();
-        ctx.arc(
-          cursorStatus.x,
-          cursorStatus.y,
-          currentThickness / 2,
-          0,
-          2 * Math.PI,
-        );
+        ctx.arc(cursorStatus.x, cursorStatus.y, currentThickness / 2, 0, 2 * Math.PI,);
         ctx.stroke();
       }
     });
@@ -196,11 +128,16 @@ canvas.addEventListener("canvas-updated", updateCanvasView);
 canvas.addEventListener("tool-updated", updateCanvasView);
 canvas.addEventListener("sticker-updated", updateCanvasView);
 
-canvas.addEventListener("mousedown", (event) => {
+canvas.addEventListener("mousedown", () => {
   if (!stickerMode) {
-    handleMouseDownEvent(event);
+    cursorStatus.isDrawing = true;
+    ongoingLine = createLine([], selectedMarkerSize);
+    addNewPoint(cursorStatus.x, cursorStatus.y);
   } else {
-    placeSticker(event);
+    const position = { x: cursorStatus.x, y: cursorStatus.y };
+    const newSticker = createSticker(position, currentSticker);
+    drawables.push(newSticker);
+    canvas.dispatchEvent(new Event("canvas-updated"));
   }
 });
 
@@ -214,7 +151,6 @@ canvas.addEventListener("mouseout", () => {
 canvas.addEventListener("mousemove", (event) => {
   cursorStatus.x = event.offsetX;
   cursorStatus.y = event.offsetY;
-
   if (stickerMode) {
     canvas.dispatchEvent(new Event("sticker-updated"));
   } else if (!cursorStatus.isDrawing) {
@@ -226,8 +162,8 @@ canvas.addEventListener("mousemove", (event) => {
 
 canvas.addEventListener("mouseup", () => {
   if (cursorStatus.isDrawing && !stickerMode) {
-    allLines.push(ongoingLine);
-    ongoingLine = { points: [], thickness: selectedMarkerSize };
+    drawables.push(ongoingLine);
+    ongoingLine = createLine([], selectedMarkerSize);
     cursorStatus.isDrawing = false;
   }
 });
@@ -237,36 +173,14 @@ clearCanvasButton.id = "clearButton";
 clearCanvasButton.innerHTML = "Clear";
 clearCanvasButton.addEventListener("click", () => {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  allLines.length = 0;
-  allStickers.length = 0;
-  ongoingLine = { points: [], thickness: selectedMarkerSize };
+  drawables.length = 0;
+  ongoingLine = createLine([], selectedMarkerSize);
 });
 
-function handleMouseDownEvent(event: MouseEvent) {
-  cursorStatus.isDrawing = true;
-  ongoingLine = { points: [], thickness: selectedMarkerSize };
-  cursorStatus.x = event.offsetX;
-  cursorStatus.y = event.offsetY;
-  addNewPoint(cursorStatus.x, cursorStatus.y);
-}
-
-// Function for placing stickers
-function placeSticker(event: MouseEvent) {
-  const position = { x: event.offsetX, y: event.offsetY };
-  const newSticker: Sticker = {
-    position,
-    symbol: currentSticker,
-    icon: currentSticker,
-  };
-  allStickers.push(newSticker);
-  canvas.dispatchEvent(new Event("canvas-updated"));
-}
-
-/* asking Brace if there was a way to make the undo and redo function together and make it readable
-this pushes and pops the "stacks" the display list and redo list.*/
+// Function for moving items in undo/redo operations
 function moveBetweenStacks(
-  fromArray: (Line | Sticker)[],
-  toArray: (Line | Sticker)[],
+  fromArray: Drawable[],
+  toArray: Drawable[],
   eventType: string,
 ) {
   if (fromArray.length === 0) return;
@@ -277,27 +191,19 @@ function moveBetweenStacks(
   }
 }
 
+// Undo and redo buttons
 const undoButton = document.createElement("button");
 undoButton.id = "undoButton";
 undoButton.innerHTML = "Undo";
 undoButton.addEventListener("click", () => {
-  moveBetweenStacks(
-    //from brace and checks if allLines has any elements and if it does, return true false and move between the sticker arrays
-    allLines.length ? allLines : allStickers,
-    allLines.length ? redoLineBuffer : redoStickerBuffer,
-    "canvas-updated",
-  );
+  moveBetweenStacks(drawables, redoDrawables, "canvas-updated");
 });
 
 const redoButton = document.createElement("button");
 redoButton.id = "redoButton";
 redoButton.innerHTML = "Redo";
 redoButton.addEventListener("click", () => {
-  moveBetweenStacks(
-    redoLineBuffer.length ? redoLineBuffer : redoStickerBuffer,
-    redoLineBuffer.length ? allLines : allStickers,
-    "canvas-updated",
-  );
+  moveBetweenStacks(redoDrawables, drawables, "canvas-updated");
 });
 
 const switchMarkerTool = (selectedSize: string) => {
@@ -330,15 +236,35 @@ thickMarkerButton.addEventListener("click", () => {
   canvas.dispatchEvent(new Event("tool-updated"));
 });
 
-// Sticker buttons
-const stickerButtons: HTMLButtonElement[] = STICKERS.map((sticker, index) => {
+
+function makeStickerButton(sticker, index){
   const button = document.createElement("button");
   button.innerHTML = sticker;
   button.addEventListener("click", () => {
     selectSticker(index);
   });
   return button;
+}
+
+const stickerButtonsContainer = document.createElement("div");
+stickerButtonsContainer.id = "stickerButtons";
+
+STICKERS.forEach((sticker, index) => {
+  const button = makeStickerButton(sticker, index);
+  stickerButtonsContainer.appendChild(button);
 });
+
+app.append(stickerButtonsContainer);
+
+const customStickerButton = document.createElement("button");
+customStickerButton.id = "customSticker";
+customStickerButton.innerHTML = "Create Custom Sticker"; 
+customStickerButton.addEventListener("click", () => {
+  const newSticker = String(prompt("Make a Custom Sticker", "🧽"));
+  STICKERS.push(newSticker);
+  const newStickerButton = makeStickerButton(newSticker, STICKERS.length - 1);
+  stickerButtonsContainer.appendChild(newStickerButton)
+})
 
 // Append buttons to the app UI
 app.append(
@@ -347,5 +273,5 @@ app.append(
   clearCanvasButton,
   undoButton,
   redoButton,
-  ...stickerButtons,
+  customStickerButton,
 );
