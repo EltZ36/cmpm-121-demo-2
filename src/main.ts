@@ -96,12 +96,9 @@ function createCursorDrawCommand(
 }
 
 // Handles view updates
-function updateCanvasView() {
-  console.log(stickerMode);
-  console.log(`Cursor is currently: ${cursor.isDrawing}`);
-  console.log()
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawables.forEach((drawable) => drawable.display(ctx));
+function updateCanvasView(currentContext: CanvasRenderingContext2D) {
+  currentContext.clearRect(0, 0, canvas.width, canvas.height);
+  drawables.forEach((drawable) => drawable.display(currentContext));
   if(stickerMode != true){
     const runner = createLine(ongoingLine.points, selectedMarkerSize);
     runner.display(ctx);
@@ -130,13 +127,13 @@ function addNewPoint(x: number, y: number) {
 
 // Event listeners
 canvas.addEventListener("canvas-updated", () => {
-  updateCanvasView();
+  updateCanvasView(ctx);
 });
 canvas.addEventListener("tool-updated", () => {
-  updateCanvasView();
+  updateCanvasView(ctx);
 });
 canvas.addEventListener("sticker-updated", () => {
-  updateCanvasView();
+  updateCanvasView(ctx);
 });
 
 canvas.addEventListener("mousedown", () => {
@@ -277,6 +274,23 @@ customStickerButton.addEventListener("click", () => {
   stickerButtonsContainer.appendChild(newStickerButton)
 });
 
+const exportButton = document.createElement("button");
+exportButton.id = "export";
+exportButton.innerHTML = "Export"; 
+exportButton.addEventListener("click", () => {
+  const tempCanvas = document.createElement("canvas"); 
+  tempCanvas.width = 1024;
+  tempCanvas.height = 1024; 
+  const tempctx = tempCanvas.getContext("2d")!;
+  tempctx.scale(4,4);
+  updateCanvasView(tempctx); 
+  tempctx.save(); 
+  const anchor = document.createElement("a");
+  anchor.href = tempCanvas.toDataURL("image/png");
+  anchor.download = "sketchpad.png";
+  anchor.click();
+});
+
 // Append buttons to the app UI
 app.append(
   thinMarkerButton,
@@ -285,4 +299,5 @@ app.append(
   undoButton,
   redoButton,
   customStickerButton,
+  exportButton,
 );
