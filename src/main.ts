@@ -20,7 +20,7 @@ app.append(headerTitle, canvas);
 
 const ctx = canvas.getContext("2d")!;
 
-const cursorStatus = {
+const cursor = {
   x: 0,
   y: 0,
   isDrawing: false,
@@ -97,21 +97,26 @@ function createCursorDrawCommand(
 
 // Handles view updates
 function updateCanvasView() {
+  console.log(stickerMode);
+  console.log(`Cursor is currently: ${cursor.isDrawing}`);
+  console.log()
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawables.forEach((drawable) => drawable.display(ctx));
-  if(stickerMode != true && currentSticker == ""){
-    ongoingLine.display(ctx);
+  if(stickerMode != true){
+    const runner = createLine(ongoingLine.points, selectedMarkerSize);
+    runner.display(ctx);
   }
-  if (stickerMode && currentSticker !== "") {
-    const position = { x: cursorStatus.x, y: cursorStatus.y };
+  if (stickerMode) {
+    const position = { x: cursor.x, y: cursor.y };
     const stickerPreview = createSticker(position, currentSticker);
     stickerPreview.display(ctx);
-  } else {
+  } 
+  else {
     const cursorPreviewCmd = createCursorDrawCommand(ctx,selectedMarkerSize,stickerMode);
     cursorPreviewCmd((ctx, currentThickness, isStickerMode) => {
       if (!isStickerMode) {
         ctx.beginPath();
-        ctx.arc(cursorStatus.x, cursorStatus.y, currentThickness / 2, 0, 2 * Math.PI,);
+        ctx.arc(cursor.x, cursor.y, currentThickness / 2, 0, 2 * Math.PI,);
         ctx.stroke();
       }
     });
@@ -124,17 +129,23 @@ function addNewPoint(x: number, y: number) {
 }
 
 // Event listeners
-canvas.addEventListener("canvas-updated", updateCanvasView);
-canvas.addEventListener("tool-updated", updateCanvasView);
-canvas.addEventListener("sticker-updated", updateCanvasView);
+canvas.addEventListener("canvas-updated", () => {
+  updateCanvasView();
+});
+canvas.addEventListener("tool-updated", () => {
+  updateCanvasView();
+});
+canvas.addEventListener("sticker-updated", () => {
+  updateCanvasView();
+});
 
 canvas.addEventListener("mousedown", () => {
   if (!stickerMode) {
-    cursorStatus.isDrawing = true;
+    cursor.isDrawing = true;
     ongoingLine = createLine([], selectedMarkerSize);
-    addNewPoint(cursorStatus.x, cursorStatus.y);
+    addNewPoint(cursor.x, cursor.y);
   } else {
-    const position = { x: cursorStatus.x, y: cursorStatus.y };
+    const position = { x: cursor.x, y: cursor.y };
     const newSticker = createSticker(position, currentSticker);
     drawables.push(newSticker);
     canvas.dispatchEvent(new Event("canvas-updated"));
@@ -142,29 +153,29 @@ canvas.addEventListener("mousedown", () => {
 });
 
 canvas.addEventListener("mouseout", () => {
-  cursorStatus.x = NaN;
-  cursorStatus.y = NaN;
-  cursorStatus.isDrawing = false;
+  cursor.x = NaN;
+  cursor.y = NaN;
+  cursor.isDrawing = false;
   canvas.dispatchEvent(new Event("tool-updated"));
 });
 
 canvas.addEventListener("mousemove", (event) => {
-  cursorStatus.x = event.offsetX;
-  cursorStatus.y = event.offsetY;
+  cursor.x = event.offsetX;
+  cursor.y = event.offsetY;
   if (stickerMode) {
     canvas.dispatchEvent(new Event("sticker-updated"));
-  } else if (!cursorStatus.isDrawing) {
+  } else if (!cursor.isDrawing) {
     canvas.dispatchEvent(new Event("tool-updated"));
   } else {
-    addNewPoint(cursorStatus.x, cursorStatus.y);
+    addNewPoint(cursor.x, cursor.y);
   }
 });
 
 canvas.addEventListener("mouseup", () => {
-  if (cursorStatus.isDrawing && !stickerMode) {
+  if (cursor.isDrawing && !stickerMode) {
     drawables.push(ongoingLine);
     ongoingLine = createLine([], selectedMarkerSize);
-    cursorStatus.isDrawing = false;
+    cursor.isDrawing = false;
   }
 });
 
@@ -264,7 +275,7 @@ customStickerButton.addEventListener("click", () => {
   STICKERS.push(newSticker);
   const newStickerButton = makeStickerButton(newSticker, STICKERS.length - 1);
   stickerButtonsContainer.appendChild(newStickerButton)
-})
+});
 
 // Append buttons to the app UI
 app.append(
