@@ -4,14 +4,18 @@ interface Point {
   y: number;
 }
 
-interface Line {
+interface Drawable {
+  display(ctx: CanvasRenderingContext2D): void;
+}
+
+interface Line extends Drawable {
   points: Point[];
   thickness: number;
 }
 
-interface Sticker {
+interface Sticker extends Drawable {
   position: Point;
-  icon: string;
+  symbol: string;
 }
 
 type RenderDisplay = (
@@ -43,3 +47,6 @@ type StickerCommand = (display: StickerPreview) => void;
 type MultipleMarkers = (markersize: string) => void;
 
 type ActiveCursor = boolean;
+
+//inteface borrowed from CJ Moshy
+type AddStickerCommand = () => void;
