@@ -39,7 +39,7 @@ const STICKERS = ["🤡", "🧐", "😐"];
 
 // Structures managing drawable items and command history
 const drawables: Drawable[] = [];
-const redoDrawables: Drawable[] = [];
+const redoList: Drawable[] = [];
 let ongoingLine: Line = {
   points: [],
   thickness: selectedMarkerSize,
@@ -96,10 +96,13 @@ function createCursorDrawCommand(
 }
 
 // Handles view updates
-function updateCanvasView(currentContext: CanvasRenderingContext2D) {
-  currentContext.clearRect(0, 0, canvas.width, canvas.height);
+function updateCanvasView(
+  currentContext: CanvasRenderingContext2D,
+  currentCanvas,
+) {
+  currentContext.clearRect(0, 0, currentCanvas.width, currentCanvas.height);
   drawables.forEach((drawable) => drawable.display(currentContext));
-  if(stickerMode != true){
+  if (stickerMode != true) {
     const runner = createLine(ongoingLine.points, selectedMarkerSize);
     runner.display(ctx);
   }
@@ -107,13 +110,16 @@ function updateCanvasView(currentContext: CanvasRenderingContext2D) {
     const position = { x: cursor.x, y: cursor.y };
     const stickerPreview = createSticker(position, currentSticker);
     stickerPreview.display(ctx);
-  } 
-  else {
-    const cursorPreviewCmd = createCursorDrawCommand(ctx,selectedMarkerSize,stickerMode);
+  } else {
+    const cursorPreviewCmd = createCursorDrawCommand(
+      ctx,
+      selectedMarkerSize,
+      stickerMode,
+    );
     cursorPreviewCmd((ctx, currentThickness, isStickerMode) => {
       if (!isStickerMode) {
         ctx.beginPath();
-        ctx.arc(cursor.x, cursor.y, currentThickness / 2, 0, 2 * Math.PI,);
+        ctx.arc(cursor.x, cursor.y, currentThickness / 2, 0, 2 * Math.PI);
         ctx.stroke();
       }
     });
@@ -127,13 +133,13 @@ function addNewPoint(x: number, y: number) {
 
 // Event listeners
 canvas.addEventListener("canvas-updated", () => {
-  updateCanvasView(ctx);
+  updateCanvasView(ctx, canvas);
 });
 canvas.addEventListener("tool-updated", () => {
-  updateCanvasView(ctx);
+  updateCanvasView(ctx, canvas);
 });
 canvas.addEventListener("sticker-updated", () => {
-  updateCanvasView(ctx);
+  updateCanvasView(ctx, canvas);
 });
 
 canvas.addEventListener("mousedown", () => {
@@ -142,23 +148,22 @@ canvas.addEventListener("mousedown", () => {
     ongoingLine = createLine([], selectedMarkerSize);
     addNewPoint(cursor.x, cursor.y);
   } else {
-    const position = { x: cursor.x, y: cursor.y };
-    const newSticker = createSticker(position, currentSticker);
+    const newSticker = createSticker(
+      { x: cursor.x, y: cursor.y },
+      currentSticker,
+    );
     drawables.push(newSticker);
     canvas.dispatchEvent(new Event("canvas-updated"));
   }
 });
 
 canvas.addEventListener("mouseout", () => {
-  cursor.x = NaN;
-  cursor.y = NaN;
-  cursor.isDrawing = false;
+  [cursor.x, cursor.y, cursor.isDrawing] = [NaN, NaN, false];
   canvas.dispatchEvent(new Event("tool-updated"));
 });
 
 canvas.addEventListener("mousemove", (event) => {
-  cursor.x = event.offsetX;
-  cursor.y = event.offsetY;
+  [cursor.x, cursor.y] = [event.offsetX, event.offsetY];
   if (stickerMode) {
     canvas.dispatchEvent(new Event("sticker-updated"));
   } else if (!cursor.isDrawing) {
@@ -176,10 +181,17 @@ canvas.addEventListener("mouseup", () => {
   }
 });
 
-const clearCanvasButton = document.createElement("button");
-clearCanvasButton.id = "clearButton";
-clearCanvasButton.innerHTML = "Clear";
-clearCanvasButton.addEventListener("click", () => {
+function makeButton(
+  buttonDescription: string,
+  onClick: () => void,
+): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.innerHTML = buttonDescription;
+  button.addEventListener("click", onClick);
+  return button;
+}
+
+const clearCanvasButton = makeButton("Clear", () => {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawables.length = 0;
   ongoingLine = createLine([], selectedMarkerSize);
@@ -192,33 +204,35 @@ function moveBetweenStacks(
   eventType: string,
 ) {
   if (fromArray.length === 0) return;
-  const movedItem = fromArray.pop();
-  if (movedItem) {
-    toArray.push(movedItem);
+  const poppedElement = fromArray.pop();
+  if (poppedElement) {
+    toArray.push(poppedElement);
     canvas.dispatchEvent(new Event(eventType));
   }
 }
 
+const undoRedoContainer = document.createElement("div");
+undoRedoContainer.id = "undoRedoDiv";
+
 // Undo and redo buttons
-const undoButton = document.createElement("button");
-undoButton.id = "undoButton";
-undoButton.innerHTML = "Undo";
-undoButton.addEventListener("click", () => {
-  moveBetweenStacks(drawables, redoDrawables, "canvas-updated");
+const undoButton = makeButton("undo", () => {
+  moveBetweenStacks(drawables, redoList, "canvas-updated");
 });
 
-const redoButton = document.createElement("button");
-redoButton.id = "redoButton";
-redoButton.innerHTML = "Redo";
-redoButton.addEventListener("click", () => {
-  moveBetweenStacks(redoDrawables, drawables, "canvas-updated");
+const redoButton = makeButton("redo", () => {
+  moveBetweenStacks(redoList, drawables, "canvas-updated");
 });
+
+undoRedoContainer.appendChild(undoButton);
+undoRedoContainer.appendChild(redoButton);
+undoRedoContainer.appendChild(clearCanvasButton);
 
 const switchMarkerTool = (selectedSize: string) => {
   stickerMode = false;
   selectedMarkerSize = selectedSize === "thin"
     ? MARKER_SIZES.THIN
     : MARKER_SIZES.THICK;
+  canvas.dispatchEvent(new Event("tool-updated"));
 };
 
 const selectSticker = (index: number) => {
@@ -228,24 +242,14 @@ const selectSticker = (index: number) => {
 };
 
 // Marker tool buttons
-const thinMarkerButton = document.createElement("button");
-thinMarkerButton.id = "thinMarker";
-thinMarkerButton.innerHTML = "Thin";
-thinMarkerButton.addEventListener("click", () => {
+const thinMarkerButton = makeButton("Thin", () => {
   switchMarkerTool("thin");
-  canvas.dispatchEvent(new Event("tool-updated"));
 });
-
-const thickMarkerButton = document.createElement("button");
-thickMarkerButton.id = "thickMarker";
-thickMarkerButton.innerHTML = "Thick";
-thickMarkerButton.addEventListener("click", () => {
+const thickMarkerButton = makeButton("Thick", () => {
   switchMarkerTool("thick");
-  canvas.dispatchEvent(new Event("tool-updated"));
 });
 
-
-function makeStickerButton(sticker, index){
+function makeStickerButton(sticker, index) {
   const button = document.createElement("button");
   button.innerHTML = sticker;
   button.addEventListener("click", () => {
@@ -262,42 +266,43 @@ STICKERS.forEach((sticker, index) => {
   stickerButtonsContainer.appendChild(button);
 });
 
-app.append(stickerButtonsContainer);
-
-const customStickerButton = document.createElement("button");
-customStickerButton.id = "customSticker";
-customStickerButton.innerHTML = "Create Custom Sticker"; 
-customStickerButton.addEventListener("click", () => {
+const customStickerButton = makeButton("Create Custom Sticker", () => {
   const newSticker = String(prompt("Make a Custom Sticker", "🧽"));
   STICKERS.push(newSticker);
   const newStickerButton = makeStickerButton(newSticker, STICKERS.length - 1);
-  stickerButtonsContainer.appendChild(newStickerButton)
+  stickerButtonsContainer.appendChild(newStickerButton);
 });
 
-const exportButton = document.createElement("button");
-exportButton.id = "export";
-exportButton.innerHTML = "Export"; 
-exportButton.addEventListener("click", () => {
-  const tempCanvas = document.createElement("canvas"); 
-  tempCanvas.width = 1024;
-  tempCanvas.height = 1024; 
+stickerButtonsContainer.appendChild(customStickerButton);
+
+const exportButtonContainer = document.createElement("div");
+exportButtonContainer.id = "exportButtonDiv";
+
+const exportButton = makeButton("Export Canvas", () => exportCanvas(4));
+
+function exportCanvas(scaleFactor: number) {
+  const tempCanvas = document.createElement("canvas");
+  [tempCanvas.width, tempCanvas.height] = [
+    canvas.width * scaleFactor,
+    canvas.height * scaleFactor,
+  ];
   const tempctx = tempCanvas.getContext("2d")!;
-  tempctx.scale(4,4);
-  updateCanvasView(tempctx); 
-  tempctx.save(); 
+  tempctx.scale(scaleFactor, scaleFactor);
+  updateCanvasView(tempctx, tempCanvas);
+  tempctx.save();
   const anchor = document.createElement("a");
   anchor.href = tempCanvas.toDataURL("image/png");
   anchor.download = "sketchpad.png";
   anchor.click();
-});
+}
+
+exportButtonContainer.appendChild(exportButton);
 
 // Append buttons to the app UI
 app.append(
   thinMarkerButton,
   thickMarkerButton,
-  clearCanvasButton,
-  undoButton,
-  redoButton,
-  customStickerButton,
-  exportButton,
+  undoRedoContainer,
+  stickerButtonsContainer,
+  exportButtonContainer,
 );

@@ -110,3 +110,7 @@ button:focus-visible {
 #drawingCanvas {
   cursor: none;
 }
+
+#exportButtonContainer {
+  margin-top: 20px;
+}
