@@ -6,7 +6,6 @@ import "./style.css";
 const APPLICATION_NAME = "Drawing App";
 const app = document.querySelector<HTMLDivElement>("#app")!;
 document.title = APPLICATION_NAME;
-app.innerHTML = APPLICATION_NAME;
 
 const headerTitle = document.createElement("h1");
 headerTitle.innerText = "Draw down below";
@@ -29,11 +28,14 @@ const cursor = {
 let selectedMarkerSize = 1;
 let stickerMode = false;
 let currentSticker = "";
+let currentHue = 0;
 
 const MARKER_SIZES = {
   THIN: 1,
   THICK: 5,
 };
+
+let currentMarkerColor = "black";
 
 const STICKERS = ["🤡", "🧐", "😐"];
 
@@ -43,17 +45,19 @@ const redoList: Drawable[] = [];
 let ongoingLine: Line = {
   points: [],
   thickness: selectedMarkerSize,
+  color: currentMarkerColor,
   display: () => {},
 };
 
 /* Remainder of code provided by CJ Moshy and enhanced with functional programming patterns. */
 
 // Implements the display function for Line
-function createLine(points: Point[], thickness: number): Line {
+function createLine(points: Point[], thickness: number, color: string): Line {
   return {
     points,
-    thickness,
+    thickness, color, 
     display(ctx) {
+      ctx.strokeStyle = color;
       if (this.points.length === 0) return;
       ctx.lineWidth = this.thickness;
       ctx.beginPath();
@@ -103,7 +107,7 @@ function updateCanvasView(
   currentContext.clearRect(0, 0, currentCanvas.width, currentCanvas.height);
   drawables.forEach((drawable) => drawable.display(currentContext));
   if (stickerMode != true) {
-    const runner = createLine(ongoingLine.points, selectedMarkerSize);
+    const runner = createLine(ongoingLine.points, selectedMarkerSize, currentMarkerColor);
     runner.display(ctx);
   }
   if (stickerMode) {
@@ -145,7 +149,7 @@ canvas.addEventListener("sticker-updated", () => {
 canvas.addEventListener("mousedown", () => {
   if (!stickerMode) {
     cursor.isDrawing = true;
-    ongoingLine = createLine([], selectedMarkerSize);
+    ongoingLine = createLine([], selectedMarkerSize, currentMarkerColor);
     addNewPoint(cursor.x, cursor.y);
   } else {
     const newSticker = createSticker(
@@ -176,7 +180,7 @@ canvas.addEventListener("mousemove", (event) => {
 canvas.addEventListener("mouseup", () => {
   if (cursor.isDrawing && !stickerMode) {
     drawables.push(ongoingLine);
-    ongoingLine = createLine([], selectedMarkerSize);
+    ongoingLine = createLine([], selectedMarkerSize, currentMarkerColor);
     cursor.isDrawing = false;
   }
 });
@@ -194,7 +198,7 @@ function makeButton(
 const clearCanvasButton = makeButton("Clear", () => {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawables.length = 0;
-  ongoingLine = createLine([], selectedMarkerSize);
+  ongoingLine = createLine([], selectedMarkerSize, currentMarkerColor);
 });
 
 // Function for moving items in undo/redo operations
@@ -298,6 +302,28 @@ function exportCanvas(scaleFactor: number) {
 
 exportButtonContainer.appendChild(exportButton);
 
+const sliderContainer = document.createElement("div");
+sliderContainer.id = "sliderContainerDiv";
+
+const slider = document.createElement("input");
+slider.id = "hueSlider";
+slider.type = "range";
+slider.min = "0";
+slider.max = "360";
+slider.value = `${currentHue}`;
+
+
+const sliderLabel = document.createElement("span");
+sliderLabel.id = "sliderLabel";
+sliderLabel.innerText = `Adjust hue:`;
+
+slider.addEventListener("input", () => {
+  currentHue += Number(slider.value); 
+  currentMarkerColor = `hsl(${currentHue}, 50%, 50%)`;
+});
+
+sliderContainer.append(sliderLabel, slider);
+
 // Append buttons to the app UI
 app.append(
   thinMarkerButton,
@@ -305,4 +331,5 @@ app.append(
   undoRedoContainer,
   stickerButtonsContainer,
   exportButtonContainer,
+  sliderContainer,
 );

@@ -11,6 +11,7 @@ interface Drawable {
 interface Line extends Drawable {
   points: Point[];
   thickness: number;
+  color: string;
 }
 
 interface Sticker extends Drawable {

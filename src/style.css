@@ -114,3 +114,12 @@ button:focus-visible {
 #exportButtonContainer {
   margin-top: 20px;
 }
+
+#sliderLabel{
+  margin-right: 20px;
+  margin-top: 20px;
+}
+
+#hueSlider{
+  margin-top: 20px;
+}
