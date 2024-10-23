@@ -12,8 +12,8 @@ headerTitle.innerText = "Draw down below";
 
 const canvas = document.createElement("canvas");
 canvas.id = "drawingCanvas";
-canvas.width = 256;
-canvas.height = 256;
+const canvasSize = 256;
+canvas.width = canvas.height = canvasSize;
 
 app.append(headerTitle, canvas);
 
@@ -49,13 +49,12 @@ let ongoingLine: Line = {
   display: () => {},
 };
 
-/* Remainder of code provided by CJ Moshy and enhanced with functional programming patterns. */
-
-// Implements the display function for Line
+//CreateLine done with the help of CJ Moshy
 function createLine(points: Point[], thickness: number, color: string): Line {
   return {
     points,
-    thickness, color, 
+    thickness,
+    color,
     display(ctx) {
       ctx.strokeStyle = color;
       if (this.points.length === 0) return;
@@ -82,7 +81,7 @@ function createSticker(position: Point, symbol: string): Sticker {
   };
 }
 
-// Command to draw cursor
+//craateCursorDrawCommand was done with the help of CJ Moshy
 function createCursorDrawCommand(
   ctx: CanvasRenderingContext2D,
   thickness: number,
@@ -99,35 +98,43 @@ function createCursorDrawCommand(
   };
 }
 
-// Handles view updates
+//UpdateCanvasView and renderPreview also done witht he help of CJ Moshy and email about functional command pattern
 function updateCanvasView(
-  currentContext: CanvasRenderingContext2D,
-  currentCanvas,
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement,
 ) {
-  currentContext.clearRect(0, 0, currentCanvas.width, currentCanvas.height);
-  drawables.forEach((drawable) => drawable.display(currentContext));
-  if (stickerMode != true) {
-    const runner = createLine(ongoingLine.points, selectedMarkerSize, currentMarkerColor);
-    runner.display(ctx);
-  }
-  if (stickerMode) {
-    const position = { x: cursor.x, y: cursor.y };
-    const stickerPreview = createSticker(position, currentSticker);
-    stickerPreview.display(ctx);
+  clearCanvas(ctx, canvas);
+  renderDrawables(ctx);
+  renderPreview(ctx);
+}
+
+function clearCanvas(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function renderDrawables(ctx: CanvasRenderingContext2D) {
+  drawables.forEach((drawable) => drawable.display(ctx));
+}
+
+function renderPreview(ctx: CanvasRenderingContext2D) {
+  if (!stickerMode) {
+    ongoingLine.display(ctx);
   } else {
-    const cursorPreviewCmd = createCursorDrawCommand(
-      ctx,
-      selectedMarkerSize,
-      stickerMode,
+    const stickerPreview = createSticker(
+      { x: cursor.x, y: cursor.y },
+      currentSticker,
     );
-    cursorPreviewCmd((ctx, currentThickness, isStickerMode) => {
-      if (!isStickerMode) {
+    stickerPreview.display(ctx);
+  }
+  createCursorDrawCommand(ctx, selectedMarkerSize, stickerMode)(
+    (ctx, thickness, mode) => {
+      if (!mode) {
         ctx.beginPath();
-        ctx.arc(cursor.x, cursor.y, currentThickness / 2, 0, 2 * Math.PI);
+        ctx.arc(cursor.x, cursor.y, thickness / 2, 0, 2 * Math.PI);
         ctx.stroke();
       }
-    });
-  }
+    },
+  );
 }
 
 function addNewPoint(x: number, y: number) {
@@ -312,13 +319,12 @@ slider.min = "0";
 slider.max = "360";
 slider.value = `${currentHue}`;
 
-
 const sliderLabel = document.createElement("span");
 sliderLabel.id = "sliderLabel";
 sliderLabel.innerText = `Adjust hue:`;
 
 slider.addEventListener("input", () => {
-  currentHue += Number(slider.value); 
+  currentHue += Number(slider.value);
   currentMarkerColor = `hsl(${currentHue}, 50%, 50%)`;
 });
 
