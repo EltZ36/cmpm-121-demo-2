@@ -259,8 +259,8 @@ const thinMarkerButton = makeButton("Thin", () => {
 const thickMarkerButton = makeButton("Thick", () => {
   switchMarkerTool("thick");
 });
-
-function makeStickerButton(sticker, index) {
+// fix implicit any
+function makeStickerButton(sticker: string, index: number) {
   const button = document.createElement("button");
   button.innerHTML = sticker;
   button.addEventListener("click", () => {
@@ -289,8 +289,10 @@ stickerButtonsContainer.appendChild(customStickerButton);
 const exportButtonContainer = document.createElement("div");
 exportButtonContainer.id = "exportButtonDiv";
 
-const exportButton = makeButton("Export Canvas", () => exportCanvas(4));
-
+// remove implied magic number
+const CANVAS_SCALE = 4                                    // was not here
+const exportButton = makeButton("Export Canvas", () => exportCanvas(CANVAS_SCALE));
+                      // scalefactor only named here
 function exportCanvas(scaleFactor: number) {
   const tempCanvas = document.createElement("canvas");
   [tempCanvas.width, tempCanvas.height] = [
