@@ -260,7 +260,7 @@ const thickMarkerButton = makeButton("Thick", () => {
   switchMarkerTool("thick");
 });
 
-function makeStickerButton(sticker, index) {
+function makeStickerButton(sticker: string, index: number) {
   const button = document.createElement("button");
   button.innerHTML = sticker;
   button.addEventListener("click", () => {
@@ -309,8 +309,17 @@ function exportCanvas(scaleFactor: number) {
 
 exportButtonContainer.appendChild(exportButton);
 
+const colorTooltip = document.createElement("div");
+colorTooltip.textContent = "Color";
+colorTooltip.style.position = "absolute";
+colorTooltip.style.backgroundColor = `hsl(${currentHue}, 50%, 50%)`;
+colorTooltip.style.width = "50px";
+colorTooltip.style.borderRadius = "4px";
+colorTooltip.style.display = "none";
+
 const sliderContainer = document.createElement("div");
 sliderContainer.id = "sliderContainerDiv";
+sliderContainer.style.position = "relative";
 
 const slider = document.createElement("input");
 slider.id = "hueSlider";
@@ -326,9 +335,20 @@ sliderLabel.innerText = `Adjust hue:`;
 slider.addEventListener("input", () => {
   currentHue += Number(slider.value);
   currentMarkerColor = `hsl(${currentHue}, 50%, 50%)`;
+  colorTooltip.style.backgroundColor = currentMarkerColor;
 });
 
-sliderContainer.append(sliderLabel, slider);
+slider.addEventListener("mouseenter", () => {
+  colorTooltip.style.display = "block";
+  colorTooltip.style.left = `${slider.offsetLeft}px`;
+  colorTooltip.style.top = `${slider.offsetTop - colorTooltip.offsetHeight}px`;
+});
+
+slider.addEventListener("mouseleave", () => {
+  colorTooltip.style.display = "none";
+});
+
+sliderContainer.append(sliderLabel, slider, colorTooltip);
 
 // Append buttons to the app UI
 app.append(
